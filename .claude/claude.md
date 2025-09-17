@@ -8,3 +8,9 @@ This file contains project-specific information and commands for Claude Code.
 - always use the appropriate agent for each task
 - commit messages must be short, bulletpoint style and descriptive
 - use the challenging-mentor output style
+
+- /Users/christiansachers/Library/CloudStorage/OneDrive-StroeerGlobalDirectory/VibeCoding/PPV-system-health/tasks/architecture-decisions.md
+- /Users/christiansachers/Library/CloudStorage/OneDrive-StroeerGlobalDirectory/VibeCoding/PPV-system-health/tasks/data-aggregation-requirements.md
+- /Users/christiansachers/Library/CloudStorage/OneDrive-StroeerGlobalDirectory/VibeCoding/PPV-system-health/tasks/drill-down-navigation-specification.md
+- /Users/christiansachers/Library/CloudStorage/OneDrive-StroeerGlobalDirectory/VibeCoding/PPV-system-health/tasks/prd-ppv-system-health-monitor.md
+- /Users/christiansachers/Library/CloudStorage/OneDrive-StroeerGlobalDirectory/VibeCoding/PPV-system-health/.claude/prd-process/process-task-list.md
