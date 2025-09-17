@@ -5,7 +5,9 @@
 
 ## Overview
 
-This document captures the architectural decisions made for the PPV System Health Monitor, a discovery-driven forensic analysis tool for investigating ad serving system performance. Each decision includes context, alternatives considered, and reasoning.
+This document captures the architectural decisions made for the PPV System Health Monitor, a discovery-driven forensic analysis tool for investigating impression delivery fulfillment performance. Each decision includes context, alternatives considered, and reasoning.
+
+**CRITICAL CORRECTION:** All architecture decisions reflect FULFILLMENT ANALYSIS focus (delivered impressions vs impression goals), NOT budget/CPM optimization.
 
 ---
 
@@ -36,12 +38,12 @@ This document captures the architectural decisions made for the PPV System Healt
 
 ## AD-002: Real-Time Data Aggregation Strategy
 
-**Decision:** Real-time aggregation over pre-computed summaries
+**Decision:** Real-time fulfillment aggregation over pre-computed summaries
 
 **Context:**
-- Need to analyze data across multiple time granularities (7-day, 30-day, yearly)
-- ~300 campaigns maximum, manageable dataset size
-- Discovery-driven analysis requires flexible data slicing
+- Need to analyze impression delivery fulfillment across multiple time granularities (7-day, 30-day, yearly)
+- ~300 campaigns maximum, manageable dataset size for fulfillment calculations
+- Discovery-driven fulfillment analysis requires flexible data slicing of impression delivery rates
 
 **Alternatives Considered:**
 ```
@@ -57,15 +59,15 @@ Option B: Real-time Aggregation (CHOSEN)
 ```
 
 **Reasoning:**
-- Dataset size is manageable (~300 campaigns, hourly granularity)
-- Discovery workflow requires flexible filtering and slicing
-- New analytical dimensions will emerge - pre-computation too rigid
-- Modern databases handle these aggregations efficiently at this scale
+- Dataset size is manageable (~300 campaigns, hourly granularity) for fulfillment calculations
+- Fulfillment discovery workflow requires flexible filtering and slicing of impression delivery data
+- New fulfillment analytical dimensions will emerge - pre-computation too rigid
+- Modern databases handle impression delivery aggregations efficiently at this scale
 
 **Implications:**
-- Database queries must be optimized for analytical workloads
-- Caching strategy needed for frequently accessed aggregations
-- Query complexity will be higher but more flexible
+- Database queries must be optimized for fulfillment calculation workloads (delivered_impressions / impression_goal)
+- Caching strategy needed for frequently accessed fulfillment aggregations
+- Fulfillment query complexity will be higher but more flexible for discovery analysis
 
 ---
 
@@ -160,23 +162,23 @@ DashboardApp
 
 ## AD-006: Visual Design Patterns
 
-**Decision:** Color-coded performance indicators with trend line analysis
+**Decision:** Color-coded fulfillment indicators with impression delivery trend analysis
 
 **Visual Language:**
-- **Color Coding:** 🟢 >100% | 🟡 99,5%-100%% | 🟠 98%-99,5% | 🔴 <98%
-- **Interaction Pattern:** Click anywhere to drill down
-- **Trend Indicators:** ↗ Improving | ↘ Declining | → Stable
+- **Fulfillment Color Coding:** 🟢 ≥100% (Goal Met/Exceeded) | 🟡 98-99.9% (Near Goal) | 🟠 95-98% (Moderate Shortfall) | 🔴 <95% (Critical Shortfall)
+- **Interaction Pattern:** Click anywhere to drill down into fulfillment details
+- **Trend Indicators:** ↗ Improving Fulfillment | ↘ Declining Fulfillment | → Stable Fulfillment
 
 **Context:**
-- User is visual learner who needs immediate pattern recognition
-- Prefers "lazy" shortcuts and clickable insights
-- Professional PM background requires executive-ready visualizations
+- User is visual learner who needs immediate fulfillment pattern recognition
+- Prefers "lazy" shortcuts and clickable insights for impression delivery analysis
+- Professional PM background requires executive-ready fulfillment visualizations
 
 **Reasoning:**
-- Color coding enables instant performance assessment
-- Trend lines show system health changes over time
-- Click-to-drill-down reduces navigation complexity
-- Professional appearance suitable for stakeholder presentations
+- Color coding enables instant fulfillment assessment (delivered vs goal)
+- Trend lines show impression delivery performance changes over time
+- Click-to-drill-down reduces fulfillment investigation complexity
+- Professional appearance suitable for stakeholder fulfillment presentations
 
 **Implications:**
 - Consistent color scheme across all visualizations
@@ -187,13 +189,13 @@ DashboardApp
 
 ## AD-007: Discovery Priority Sequence
 
-**Decision:** Fulfillment gaps first, then temporal trends, then detailed analysis
+**Decision:** Impression delivery gaps first, then temporal trends, then detailed analysis
 
 **Investigation Sequence:**
-1. **Primary:** Fulfillment Gap Analysis (Guaranteed vs Unguaranteed performance)
-2. **Secondary:** Temporal Trend Analysis (Rolling performance windows)
-3. **Tertiary:** Geographic/Site Performance Patterns
-4. **Advanced:** Campaign-specific forensic analysis
+1. **Primary:** Impression Delivery Gap Analysis (Guaranteed vs Unguaranteed fulfillment rates)
+2. **Secondary:** Temporal Fulfillment Trend Analysis (Rolling impression delivery windows)
+3. **Tertiary:** Geographic/Site Fulfillment Patterns
+4. **Advanced:** Campaign-specific fulfillment forensic analysis
 
 **Context:**
 - User explicitly stated priority preferences
@@ -271,6 +273,70 @@ Level 4: Site/Time Analysis (Hourly breakdowns)
 - Data aggregation requirements for each level
 - UI design must support intuitive back-navigation
 - Performance optimization for detailed level queries
+
+---
+
+## AD-010: Critical Data Structure Architecture
+
+**Decision:** Impression-focused database schema with correct field types
+
+**CRITICAL DATA STRUCTURE SPECIFICATIONS:**
+
+**Campaign/Deal Table Schema:**
+```sql
+CREATE TABLE campaigns (
+    campaign_id UUID PRIMARY KEY,
+    campaign_name TEXT NOT NULL,
+    impression_goal INTEGER NOT NULL CHECK (impression_goal BETWEEN 1 AND 2000000000),
+    runtime TEXT NOT NULL,  -- Format: "START_DATE-END_DATE" or "ASAP-END_DATE"
+    buyer TEXT,  -- 'Not set' = campaign, other values = deal
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**Context:**
+- **WRONG ASSUMPTION:** impression_goal as range string, separate start/end dates
+- **CORRECT REALITY:** impression_goal is concrete integer, runtime is single hyphenated field
+- **WRONG FOCUS:** Budget/CPM optimization workflows
+- **CORRECT FOCUS:** Fulfillment analysis (delivered_impressions / impression_goal)
+
+**Alternatives Considered:**
+```
+REJECTED: Separate start_date/end_date fields
+├─ Reason: Data comes as single runtime field "START-END"
+├─ Example: "14.01.2025-26.01.2025" or "ASAP-14.12.2025"
+└─ Impact: Would require unnecessary parsing/reconstruction
+
+REJECTED: impression_goal as TEXT/VARCHAR
+├─ Reason: Always concrete integer, never range
+├─ Example: 1500000 (not "1-2000000000")
+└─ Impact: Would break fulfillment calculations
+```
+
+**Reasoning:**
+- Impression goal is ALWAYS a concrete target number for fulfillment calculation
+- Runtime parsing must handle "ASAP" as valid start date
+- Primary analysis is fulfillment rate: (delivered_impressions / impression_goal) × 100%
+- Budget/CPM fields are secondary reference data, not primary analysis focus
+
+**Implications:**
+- Database schema optimized for fulfillment calculations
+- API design focused on impression delivery metrics
+- UI components emphasize delivery vs goal comparisons
+- Query patterns optimize for fulfillment percentage calculations
+
+**Runtime Field Parsing Logic:**
+```sql
+-- Extract start/end dates from runtime field
+CASE
+  WHEN runtime LIKE 'ASAP-%' THEN
+    SPLIT_PART(runtime, '-', 2)::DATE as end_date
+  ELSE
+    SPLIT_PART(runtime, '-', 1)::DATE as start_date,
+    SPLIT_PART(runtime, '-', 2)::DATE as end_date
+END
+```
 
 ---
 

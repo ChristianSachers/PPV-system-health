@@ -1,6 +1,11 @@
 ## Tasks: Iteration 1 - Campaign Data Foundation
 
-**Business Value:** PM can upload XLSX campaign files and see structured, validated campaign data
+**Business Value:** PM can upload XLSX campaign files and see structured, validated campaign data with correct impression goals (INTEGER) and runtime fields (TEXT)
+
+**CRITICAL CORRECTION:** This iteration must implement CORRECTED database schema with:
+- impression_goal as INTEGER field (not range string)
+- runtime as single TEXT field (not separate start/end dates)
+- Focus on impression delivery fulfillment analysis (not budget/CPM)
 
 ## Relevant Files
 
@@ -35,6 +40,9 @@
 - XLSX processing requires pandas and openpyxl for robust file handling
 - Campaign vs Deal classification: `buyer = 'Not set'` = campaign, else deal
 - UUID validation is critical for data integrity (campaign_id field)
+- impression_goal must be stored as INTEGER (1 to 2,000,000,000)
+- runtime must be stored as TEXT field ("START_DATE-END_DATE" or "ASAP-END_DATE")
+- **FOCUS:** Primary analysis is fulfillment = (delivered_impressions / impression_goal) * 100%
 
 ## Tasks
 
@@ -47,14 +55,14 @@
   - [ ] 1.6 Create .env files for database connection strings and API configuration
   - [ ] 1.7 Set up development scripts for running backend/frontend/database together
 
-- [ ] 2.0 Database Schema Design & Campaign Data Model
-  - [ ] 2.1 Design campaigns table schema based on XLSX data structure from PRD
+- [ ] 2.0 Database Schema Design & Campaign Data Model (CORRECTED)
+  - [ ] 2.1 Design campaigns table schema
   - [ ] 2.2 Create upload_sessions table for tracking file upload status and validation results
-  - [ ] 2.3 Write initial database migration script (001_initial_schema.sql)
-  - [ ] 2.4 Implement SQLAlchemy models for Campaign and UploadSession entities
+  - [ ] 2.3 Write initial database migration script (001_initial_schema.sql) with CORRECTED schema
+  - [ ] 2.4 Implement SQLAlchemy models for Campaign and UploadSession entities with proper field types
   - [ ] 2.5 Create database connection management with environment-based configuration
-  - [ ] 2.6 Add database indexes for UUID lookups and buyer field queries
-  - [ ] 2.7 Write unit tests for database models and connection management
+  - [ ] 2.6 Add database indexes for impression_goal, runtime parsing, and buyer field queries
+  - [ ] 2.7 Write unit tests for database models and connection management with correct data types
 
 - [ ] 3.0 Backend API Foundation with FastAPI
   - [ ] 3.1 Create FastAPI application instance with CORS middleware for frontend integration
@@ -65,14 +73,14 @@
   - [ ] 3.6 Create base response models for consistent API response format
   - [ ] 3.7 Write integration tests for FastAPI application setup and middleware
 
-- [ ] 4.0 XLSX Upload Processing & Validation Pipeline
-  - [ ] 4.1 Implement XLSX file parser using pandas to read campaign data sheets
-  - [ ] 4.2 Create campaign data validator with business rules (UUID format, required fields)
+- [ ] 4.0 XLSX Upload Processing & Validation Pipeline (CORRECTED)
+  - [ ] 4.1 Implement XLSX file parser using pandas to read campaign data sheets with correct field handling
+  - [ ] 4.2 Create campaign data validator with CORRECTED business rules
   - [ ] 4.3 Implement buyer field classification logic (campaign vs deal determination)
-  - [ ] 4.4 Build data quality reporting system (count valid/invalid records, error details)
-  - [ ] 4.5 Create upload processing service that coordinates parsing, validation, and storage
+  - [ ] 4.4 Build data quality reporting system focusing on corrected validation rules
+  - [ ] 4.5 Create upload processing service that coordinates parsing, validation, and storage with proper type handling
   - [ ] 4.6 Implement UUID-based deduplication logic for incremental campaign updates
-  - [ ] 4.7 Write comprehensive unit tests for XLSX processing and validation logic
+  - [ ] 4.7 Write comprehensive unit tests for XLSX processing and validation logic with correct data types
 
 - [ ] 5.0 Frontend Application Framework with React + TypeScript
   - [ ] 5.1 Set up React application with routing using React Router for multi-page navigation

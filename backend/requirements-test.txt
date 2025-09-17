@@ -1,0 +1,44 @@
+# PPV System Health Monitor - Testing Dependencies
+# Discovery-driven development requires comprehensive testing tools
+
+# Core testing framework
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+pytest-timeout==2.2.0
+
+# Database testing
+pytest-postgresql==5.0.0
+alembic==1.12.1
+sqlalchemy==2.0.23
+
+# FastAPI testing
+httpx==0.25.2
+pytest-httpx==0.26.0
+
+# Data testing for campaign analysis
+pytest-datafiles==3.0.0
+openpyxl==3.1.2  # For XLSX test file generation
+pandas==2.1.4   # For test data manipulation
+faker==20.1.0    # For realistic test data generation
+
+# Fixtures and mocking
+factory-boy==3.3.0
+responses==0.24.1
+
+# UUID testing utilities
+uuid-utils==0.7.0
+
+# Performance testing
+pytest-benchmark==4.0.0
+
+# Test reporting
+pytest-html==4.1.1
+pytest-json-report==1.5.0
+
+# Development utilities
+pre-commit==3.6.0
+black==23.11.0
+isort==5.13.0
+mypy==1.7.1

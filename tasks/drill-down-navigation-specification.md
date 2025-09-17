@@ -5,13 +5,15 @@
 
 ## Overview
 
-This document defines the navigation system for PPV System Health Monitor, designed around business investigation workflow: system health assessment → problem identification → underperformance analysis → forensic root cause investigation.
+This document defines the navigation system for PPV System Health Monitor, designed around impression delivery fulfillment investigation workflow: system health assessment → impression delivery gap identification → fulfillment shortfall analysis → forensic root cause investigation.
+
+**CRITICAL FOCUS:** All navigation levels optimize for IMPRESSION DELIVERY FULFILLMENT analysis (delivered_impressions / impression_goal), NOT budget/CPM analysis.
 
 **Core Business Questions:**
-1. **Level 1:** Are guaranteed campaigns/deals fulfilling their impression goals (≥100%)?
-2. **Level 2:** How do different categories (guaranteed campaigns, unguaranteed campaigns, guaranteed deals) perform?
-3. **Level 3:** Which specific campaigns/deals are underperforming and need investigation?
-4. **Level 4:** What exactly went wrong with this campaign/deal and when?
+1. **Level 1:** Are campaigns/deals achieving their impression delivery goals (delivered ≥ impression_goal)?
+2. **Level 2:** How do different categories (guaranteed campaigns, unguaranteed campaigns, guaranteed deals) perform against their impression goals?
+3. **Level 3:** Which specific campaigns/deals have impression delivery shortfalls requiring investigation?
+4. **Level 4:** What exactly caused this impression delivery shortfall and when did it occur?
 
 ---
 
@@ -30,10 +32,10 @@ Level 4: Granular Root Cause Analysis (Date/hour picker for precise investigatio
 ```
 
 **User Mental Model:**
-- **Level 1:** "Do I have system health problems?"
-- **Level 2:** "Where are the category-specific problems?"
-- **Level 3:** "Which specific campaigns/deals need my attention?"
-- **Level 4:** "What exactly caused this underperformance?"
+- **Level 1:** "Do I have impression delivery fulfillment problems?"
+- **Level 2:** "Where are the category-specific impression shortfalls?"
+- **Level 3:** "Which specific campaigns/deals have impression delivery gaps needing my attention?"
+- **Level 4:** "What exactly caused this impression delivery shortfall?"
 
 **Data Complexity Progression:**
 ```
@@ -47,29 +49,36 @@ Level 4: 1 campaign/deal → Hourly granularity + custom date/hour picker + site
 
 ## DNV-002: Fulfillment Business Logic
 
-**Fulfillment Definition:**
+**CORRECTED Fulfillment Definition:**
 ```sql
--- Fulfillment calculation
-(impression_goal - delivered_impressions) as shortfall
+-- Impression Delivery Fulfillment calculation (CORRECTED for INTEGER impression_goal)
+(c.impression_goal - COALESCE(SUM(r.total_impressions), 0)) as impression_shortfall
+
+-- Fulfillment Percentage (Primary Metric)
+CASE
+  WHEN c.impression_goal > 0 THEN
+    (COALESCE(SUM(r.total_impressions), 0)::FLOAT / c.impression_goal * 100)
+  ELSE 0
+END as fulfillment_percentage
 
 -- Classification
 CASE
-  WHEN (impression_goal - delivered_impressions) <= 0 THEN 'fulfilled'    -- Delivered >= goal
-  WHEN (impression_goal - delivered_impressions) > 0 THEN 'underperforming'  -- Shortfall exists
-END as fulfillment_status
+  WHEN (c.impression_goal - COALESCE(SUM(r.total_impressions), 0)) <= 0 THEN 'goal_met'    -- Delivered >= goal
+  WHEN (c.impression_goal - COALESCE(SUM(r.total_impressions), 0)) > 0 THEN 'shortfall'    -- Shortfall exists
+END as delivery_status
 ```
 
-**Performance Categories (Based on shortfall):**
-- **🟢 Fulfilled:** `shortfall <= 0` (≥100% delivery)
-- **🟡 Slight Shortfall:** `shortfall > 0 AND shortfall <= (goal * 0.02)` (98-100%)
-- **🟠 Moderate Shortfall:** `shortfall > (goal * 0.02) AND shortfall <= (goal * 0.05)` (95-98%)
-- **🔴 Critical Shortfall:** `shortfall > (goal * 0.05)` (<95%)
+**Impression Delivery Categories (Based on fulfillment percentage):**
+- **🟢 Goal Met/Exceeded:** `fulfillment_percentage >= 100` (delivered ≥ impression_goal)
+- **🟡 Near Goal:** `fulfillment_percentage >= 99.5 AND fulfillment_percentage < 100` (99.5-99.9%)
+- **🟠 Moderate Shortfall:** `fulfillment_percentage >= 95 AND fulfillment_percentage < 99.5` (95-99.5%)
+- **🔴 Critical Shortfall:** `fulfillment_percentage < 95` (significant impression underdelivery)
 
-**Level 3 Filtering Logic:**
+**Level 3 Filtering Logic (CORRECTED):**
 ```sql
--- Show only underperforming campaigns/deals
-WHERE (impression_goal - delivered_impressions) > 0
-ORDER BY (impression_goal - delivered_impressions) DESC  -- Worst shortfalls first
+-- Show only campaigns/deals with impression delivery shortfalls
+WHERE (c.impression_goal - COALESCE(SUM(r.total_impressions), 0)) > 0
+ORDER BY (c.impression_goal - COALESCE(SUM(r.total_impressions), 0)) DESC  -- Worst impression shortfalls first
 ```
 
 ---
@@ -726,7 +735,143 @@ class InvestigationFlowController {
 
 ---
 
-## DNV-009: Implementation Checklist
+## DNV-009: CRITICAL Database Schema Navigation Corrections
+
+**MANDATORY CORRECTIONS:** Fix navigation queries for correct data structure
+
+**CORRECTED Campaign Schema for Navigation:**
+```sql
+-- Navigation queries must use CORRECTED schema
+CREATE TABLE campaigns (
+    campaign_id UUID PRIMARY KEY,
+    campaign_name TEXT NOT NULL,
+    impression_goal INTEGER NOT NULL,  -- CORRECTED: INTEGER not range string
+    runtime TEXT NOT NULL,             -- CORRECTED: Single field not separate dates
+    buyer TEXT
+);
+```
+
+**Level 1 System Health Query (CORRECTED):**
+```sql
+WITH campaign_fulfillment AS (
+  SELECT
+    c.campaign_id,
+    c.impression_goal,  -- INTEGER field
+    c.runtime,          -- TEXT field to parse
+
+    -- Parse runtime for end date filtering
+    CASE
+      WHEN c.runtime LIKE 'ASAP-%' THEN
+        TO_DATE(SPLIT_PART(c.runtime, '-', 2), 'DD.MM.YYYY')
+      ELSE
+        TO_DATE(SPLIT_PART(c.runtime, '-', 2), 'DD.MM.YYYY')
+    END as campaign_end_date,
+
+    -- Entity classification
+    CASE
+      WHEN c.buyer = 'Not set' THEN 'campaign'
+      ELSE 'deal'
+    END as entity_type,
+
+    -- Purchase type from reporting data
+    COALESCE(r.campaign_purchase_type, r.deal_purchase_type, 'unknown') as purchase_type,
+
+    -- Core fulfillment metrics
+    COALESCE(SUM(r.total_impressions), 0) as delivered_impressions,
+    (c.impression_goal - COALESCE(SUM(r.total_impressions), 0)) as impression_shortfall,
+
+    CASE
+      WHEN c.impression_goal > 0 THEN
+        (COALESCE(SUM(r.total_impressions), 0)::FLOAT / c.impression_goal * 100)
+      ELSE 0
+    END as fulfillment_percentage,
+
+    CASE
+      WHEN (c.impression_goal - COALESCE(SUM(r.total_impressions), 0)) <= 0 THEN 'goal_met'
+      ELSE 'shortfall'
+    END as delivery_status
+
+  FROM campaigns c
+  LEFT JOIN reporting_data r ON (c.campaign_id = r.campaign_id OR c.campaign_id = r.deal_id)
+  WHERE
+    -- Filter completed campaigns using parsed runtime
+    CASE
+      WHEN c.runtime LIKE 'ASAP-%' THEN
+        TO_DATE(SPLIT_PART(c.runtime, '-', 2), 'DD.MM.YYYY')
+      ELSE
+        TO_DATE(SPLIT_PART(c.runtime, '-', 2), 'DD.MM.YYYY')
+    END < CURRENT_DATE
+    AND c.buyer IS NOT NULL
+  GROUP BY c.campaign_id, c.impression_goal, c.runtime, c.buyer
+)
+
+-- System health summary for Level 1 navigation
+SELECT
+  entity_type,
+  purchase_type,
+  COUNT(*) as total_count,
+  COUNT(CASE WHEN delivery_status = 'goal_met' THEN 1 END) as goal_met_count,
+  COUNT(CASE WHEN delivery_status = 'shortfall' THEN 1 END) as shortfall_count,
+  ROUND(COUNT(CASE WHEN delivery_status = 'goal_met' THEN 1 END) * 100.0 / COUNT(*), 1) as fulfillment_rate
+FROM campaign_fulfillment
+GROUP BY entity_type, purchase_type
+ORDER BY entity_type, purchase_type;
+```
+
+**Level 3 Problem Investigation Query (CORRECTED):**
+```sql
+-- Show ONLY campaigns/deals with impression delivery shortfalls
+SELECT
+  c.campaign_id,
+  c.campaign_name,
+  c.impression_goal,  -- INTEGER field
+  c.runtime,          -- TEXT field
+
+  -- Parse runtime for display
+  CASE
+    WHEN c.runtime LIKE 'ASAP-%' THEN
+      'ASAP - ' || SPLIT_PART(c.runtime, '-', 2)
+    ELSE
+      REPLACE(c.runtime, '-', ' to ')
+  END as runtime_display,
+
+  COALESCE(SUM(r.total_impressions), 0) as delivered_impressions,
+  (c.impression_goal - COALESCE(SUM(r.total_impressions), 0)) as impression_shortfall,
+
+  CASE
+    WHEN c.impression_goal > 0 THEN
+      (COALESCE(SUM(r.total_impressions), 0)::FLOAT / c.impression_goal * 100)
+    ELSE 0
+  END as fulfillment_percentage,
+
+  -- Shortfall severity classification
+  CASE
+    WHEN (COALESCE(SUM(r.total_impressions), 0)::FLOAT / c.impression_goal * 100) >= 99.5 THEN 'moderate'
+    WHEN (COALESCE(SUM(r.total_impressions), 0)::FLOAT / c.impression_goal * 100) >= 95 THEN 'significant'
+    ELSE 'critical'
+  END as shortfall_severity
+
+FROM campaigns c
+LEFT JOIN reporting_data r ON (c.campaign_id = r.campaign_id OR c.campaign_id = r.deal_id)
+WHERE
+  -- Only completed campaigns with shortfalls
+  CASE
+    WHEN c.runtime LIKE 'ASAP-%' THEN
+      TO_DATE(SPLIT_PART(c.runtime, '-', 2), 'DD.MM.YYYY')
+    ELSE
+      TO_DATE(SPLIT_PART(c.runtime, '-', 2), 'DD.MM.YYYY')
+  END < CURRENT_DATE
+  AND c.buyer IS NOT NULL
+  AND entity_type = $entity_type
+  AND purchase_type = $purchase_type
+GROUP BY c.campaign_id, c.campaign_name, c.impression_goal, c.runtime, c.buyer
+HAVING (c.impression_goal - COALESCE(SUM(r.total_impressions), 0)) > 0  -- ONLY shortfalls
+ORDER BY impression_shortfall DESC;  -- Worst shortfalls first
+```
+
+---
+
+## DNV-010: Implementation Checklist
 
 ### Core Navigation Components:
 - [ ] Level1SystemHealthTriage with time filters and category breakdown

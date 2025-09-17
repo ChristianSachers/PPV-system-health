@@ -5,23 +5,27 @@
 
 The PPV System Health Monitor is a forensic analysis tool designed to investigate and understand the fulfillment performance of our programmatic public video ad serving system. Rather than managing active campaigns, this tool performs retrospective analysis on completed campaigns and deals to identify system performance patterns, bottlenecks, and improvement opportunities.
 
-**Core Problem:** Currently, there is no transparency into whether our ad serving system achieves optimal campaign fulfillment. We need to establish baseline performance metrics and discover patterns that indicate system health issues.
+**Core Problem:** Currently, there is no transparency into whether our ad serving system achieves optimal impression delivery fulfillment. We need to establish baseline fulfillment metrics comparing delivered impressions against impression goals to discover patterns that indicate delivery performance issues.
+
+**Key Insight:** The system's primary purpose is FULFILLMENT ANALYSIS - measuring how well campaigns and deals achieve their impression goals, not budget or CPM optimization.
 
 **Target User:** Product Manager with deep PPV domain knowledge and CS background, requiring visual data exploration tools with clickable insights for deeper investigation.
 
 ## Discovery Goals
 
 ### Primary Hypotheses to Test:
-1. **100% Fulfillment Hypothesis:** Guaranteed campaigns and deals should achieve 100% impression delivery when sufficient opportunity exists
-2. **DSP Interference Hypothesis:** Deal underperformance may correlate with DSP bidding cessation rather than system failures
-3. **Opportunity vs. Performance Hypothesis:** System failures can be proven by demonstrating adequate inventory opportunity existed but wasn't utilized
-4. **Pattern Recognition Hypothesis:** Underperformance patterns exist across temporal, geographic, or campaign parameter dimensions
+1. **100% Fulfillment Hypothesis:** Guaranteed campaigns and deals should achieve 100% impression delivery (Delivered ≥ Impression Goal) when sufficient opportunity exists
+2. **DSP Interference Hypothesis:** Deal underperformance may correlate with DSP bidding cessation rather than system delivery failures
+3. **Delivery Opportunity Hypothesis:** System failures can be proven by demonstrating adequate inventory opportunity existed but impressions weren't delivered to meet goals
+4. **Fulfillment Pattern Hypothesis:** Impression delivery shortfall patterns exist across temporal, geographic, or campaign parameter dimensions
 
 ### Learning Success Criteria:
-- Ability to prove when system had adequate opportunity but failed to deliver 100% fulfillment
-- Clear identification of guaranteed vs. unguaranteed performance gaps
-- Discovery of actionable patterns that point to specific system improvements
-- Establishment of quantitative baseline for future system performance comparison
+- Ability to prove when system had adequate opportunity but failed to deliver impression goals (shortfall analysis)
+- Clear identification of guaranteed vs. unguaranteed impression delivery performance gaps
+- Discovery of actionable fulfillment patterns that point to specific delivery system improvements
+- Establishment of quantitative impression delivery baseline for future fulfillment performance comparison
+
+**Success Metrics:** Fulfillment Rate = (Delivered Impressions / Impression Goal) × 100%
 
 ## Investigation Workflows
 
@@ -34,9 +38,9 @@ Upload Campaign Data → Validate & Clean → Generate System Overview
 ```
 
 **Key Investigation Paths:**
-1. **System Baseline Discovery:** Visual dashboard showing overall fulfillment rates across 7-day, 30-day, and yearly time windows
-2. **Guaranteed vs. Unguaranteed Gap Analysis:** Comparative performance visualization with absolute and percentage metrics
-3. **Campaign/Deal Distribution Analysis:** Understanding the volume and variety of campaigns in the system
+1. **Impression Delivery Baseline:** Visual dashboard showing overall fulfillment rates (delivered/goal %) across 7-day, 30-day, and yearly time windows
+2. **Guaranteed vs. Unguaranteed Fulfillment Gap Analysis:** Comparative impression delivery performance with shortfall metrics
+3. **Campaign/Deal Fulfillment Distribution:** Understanding delivery performance patterns across campaign types
 
 ### Phase 2: Temporal Trend Analysis (Weeks 3-4)
 **Rolling Window Investigation:**
@@ -44,17 +48,17 @@ Upload Campaign Data → Validate & Clean → Generate System Overview
 - Performance change correlation with system modifications
 - Seasonal or cyclical pattern identification
 
-### Phase 3: Performance Segmentation (Weeks 5-6)
-**Guaranteed vs. Unguaranteed Deep Dive:**
-- DSP bidding cessation impact analysis
-- Performance distribution analysis within each category
-- Outlier identification and characterization
+### Phase 3: Fulfillment Performance Segmentation (Weeks 5-6)
+**Guaranteed vs. Unguaranteed Impression Delivery Deep Dive:**
+- DSP bidding cessation impact on impression delivery rates
+- Fulfillment distribution analysis within each category (% of impression goals achieved)
+- Delivery shortfall outlier identification and characterization
 
-### Phase 4: Geographic/Site Performance Patterns (Weeks 7+)
-**Site-Level Forensics:**
-- Performance correlation with site characteristics
-- Geographic performance pattern discovery
-- Inventory opportunity vs. utilization analysis
+### Phase 4: Geographic/Site Fulfillment Patterns (Weeks 7+)
+**Site-Level Impression Delivery Forensics:**
+- Impression delivery correlation with site characteristics
+- Geographic fulfillment pattern discovery
+- Inventory opportunity vs. impression goal achievement analysis
 
 ## Analytical Requirements
 
@@ -80,15 +84,15 @@ Upload Campaign Data → Validate & Clean → Generate System Overview
    - Multiple visualization types (trends, distributions, comparisons)
    - Filter and segment capabilities across multiple dimensions
 
-2. **Pattern Discovery Interface:**
-   - Comparative analysis tools (actual vs. goal performance)
-   - Outlier identification and highlighting
-   - Correlation analysis between different data dimensions
+2. **Fulfillment Pattern Discovery Interface:**
+   - Comparative analysis tools (delivered impressions vs. impression goals)
+   - Delivery shortfall outlier identification and highlighting
+   - Correlation analysis between fulfillment rates and campaign/deal dimensions
 
-3. **Insight Generation System:**
-   - Automated underperformance flagging based on configurable thresholds
-   - Campaign/Deal performance ranking and categorization
-   - Opportunity analysis (inventory availability vs. utilization)
+3. **Fulfillment Insight Generation System:**
+   - Automated impression delivery shortfall flagging based on configurable fulfillment thresholds
+   - Campaign/Deal fulfillment ranking and categorization (% of impression goals achieved)
+   - Delivery opportunity analysis (inventory availability vs. impression goal achievement)
 
 ## Discovery Constraints
 
@@ -136,9 +140,25 @@ Upload Campaign Data → Validate & Clean → Generate System Overview
 
 ### Integration Specifications:
 - **Campaign Data:** XLSX file format with predefined schema
+  - **Impression Goal:** Single INTEGER field (1 to 2,000,000,000) - NOT a range string
+  - **Runtime:** Single TEXT field format "START_DATE-END_DATE" where START_DATE can be "ASAP"
+  - **Core Fields:** campaign_id (UUID), campaign_name, impression_goal (INTEGER), runtime (TEXT), buyer
 - **Reporting Data:** REST API with bearer token authentication
 - **Time Granularity:** Hourly reporting data aggregated to various time windows
 - **Geographic Granularity:** Site-level performance analysis capabilities
+
+### CRITICAL DATA STRUCTURE CORRECTIONS:
+**❌ INCORRECT ASSUMPTIONS (DO NOT IMPLEMENT):**
+- Impression goal as range string "1-2000000000"
+- Separate start_date and end_date fields
+- Primary focus on Budget and CPM analysis
+- Complex budget optimization workflows
+
+**✅ CORRECT DATA STRUCTURE:**
+- **impression_goal:** INTEGER field containing concrete target (e.g., 1500000)
+- **runtime:** TEXT field containing "14.01.2025-26.01.2025" or "ASAP-14.12.2025"
+- **Primary Analysis:** Fulfillment Rate = (delivered_impressions / impression_goal) × 100%
+- **Core Workflow:** Identify campaigns/deals with fulfillment rate < 100%
 
 ## Learning Success Metrics
 

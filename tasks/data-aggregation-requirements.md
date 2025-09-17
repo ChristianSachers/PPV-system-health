@@ -5,7 +5,9 @@
 
 ## Overview
 
-This document defines the data aggregation requirements for the PPV System Health Monitor, specifying how raw campaign and reporting data transforms into analytical insights. Each requirement includes business logic, SQL patterns, performance considerations, and API specifications.
+This document defines the data aggregation requirements for the PPV System Health Monitor, specifying how raw campaign and reporting data transforms into impression delivery fulfillment insights. Each requirement includes fulfillment business logic, SQL patterns, performance considerations, and API specifications.
+
+**CRITICAL FOCUS:** All aggregation patterns optimize for FULFILLMENT ANALYSIS (delivered_impressions / impression_goal), NOT budget/CPM analysis.
 
 ---
 
@@ -68,33 +70,44 @@ COALESCE(
 
 ---
 
-## DAR-003: Fulfillment Calculation Pattern
+## DAR-003: Impression Delivery Fulfillment Calculation Pattern
+
+**CRITICAL CORRECTION:** impression_goal is INTEGER field, NOT range string
 
 **Core Business Logic:**
 ```sql
--- Fulfillment Percentage Calculation
+-- Fulfillment Percentage Calculation (CORRECTED)
 CASE
   WHEN c.impression_goal > 0 THEN
-    (COALESCE(SUM(r.total_impressions), 0) / c.impression_goal * 100)
+    (COALESCE(SUM(r.total_impressions), 0)::FLOAT / c.impression_goal * 100)
   ELSE 0
 END as fulfillment_percentage
+
+-- Shortfall Calculation (Primary Metric)
+(c.impression_goal - COALESCE(SUM(r.total_impressions), 0)) as impression_shortfall
 ```
 
-**Performance Classification (Updated Thresholds):**
-- **🟢 Excellent:** `> 100%` (over-delivery)
-- **🟡 Good:** `99.5% - 100%` (near-perfect)
-- **🟠 Warning:** `98% - 99.5%` (slight underperformance)
-- **🔴 Critical:** `< 98%` (significant underperformance)
+**Fulfillment Classification (Impression Delivery Focus):**
+- **🟢 Goal Met/Exceeded:** `≥ 100%` (delivered ≥ impression_goal)
+- **🟡 Near Goal:** `99.5% - 99.9%` (slight impression shortfall)
+- **🟠 Moderate Shortfall:** `95% - 99.5%` (moderate impression gap)
+- **🔴 Critical Shortfall:** `< 95%` (significant impression underdelivery)
 
 **Implementation:**
 ```sql
--- Performance Category Classification
+-- Fulfillment Category Classification (CORRECTED)
 CASE
-  WHEN fulfillment_percentage > 100 THEN 'excellent'
-  WHEN fulfillment_percentage >= 99.5 THEN 'good'
-  WHEN fulfillment_percentage >= 98 THEN 'warning'
-  ELSE 'critical'
-END as performance_category
+  WHEN fulfillment_percentage >= 100 THEN 'goal_met'
+  WHEN fulfillment_percentage >= 99.5 THEN 'near_goal'
+  WHEN fulfillment_percentage >= 95 THEN 'moderate_shortfall'
+  ELSE 'critical_shortfall'
+END as fulfillment_category
+
+-- Primary Business Metric: Impression Shortfall
+CASE
+  WHEN (c.impression_goal - COALESCE(SUM(r.total_impressions), 0)) <= 0 THEN 'fulfilled'
+  ELSE 'underperforming'
+END as delivery_status
 ```
 
 ---
@@ -536,6 +549,141 @@ EXTRACT(HOUR FROM r.date_hour) as hour  -- UTC hour extraction
 
 -- Time window filtering in UTC
 WHERE r.date_hour >= NOW() - INTERVAL $time_window DAY  -- UTC comparison
+```
+
+---
+
+## DAR-011: CRITICAL Database Schema Corrections
+
+**MANDATORY CORRECTIONS:** Fix fundamental data structure misconceptions
+
+**CORRECTED Campaign Table Schema:**
+```sql
+CREATE TABLE campaigns (
+    campaign_id UUID PRIMARY KEY,
+    campaign_name TEXT NOT NULL,
+    impression_goal INTEGER NOT NULL CHECK (impression_goal BETWEEN 1 AND 2000000000),
+    runtime TEXT NOT NULL,  -- Format: "START_DATE-END_DATE" or "ASAP-END_DATE"
+    buyer TEXT,  -- 'Not set' = campaign, other values = deal
+    -- Optional reference fields (NOT primary analysis focus)
+    budget DECIMAL(15,2),
+    cpm DECIMAL(10,4),
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**CRITICAL FIELD CORRECTIONS:**
+
+**1. impression_goal Field:**
+```sql
+-- WRONG (DO NOT IMPLEMENT)
+impression_goal TEXT DEFAULT '1-2000000000'
+
+-- CORRECT (IMPLEMENT THIS)
+impression_goal INTEGER NOT NULL CHECK (impression_goal BETWEEN 1 AND 2000000000)
+
+-- Example values:
+-- 1500000 (one and a half million impressions)
+-- 250000 (quarter million impressions)
+-- 2000000000 (two billion impressions - maximum)
+```
+
+**2. runtime Field:**
+```sql
+-- WRONG (DO NOT IMPLEMENT)
+start_date DATE,
+end_date DATE
+
+-- CORRECT (IMPLEMENT THIS)
+runtime TEXT NOT NULL
+
+-- Example values:
+-- "14.01.2025-26.01.2025" (standard date range)
+-- "ASAP-14.12.2025" (ASAP start date)
+-- "01.03.2025-31.03.2025" (March campaign)
+
+-- Runtime parsing for queries:
+CASE
+  WHEN runtime LIKE 'ASAP-%' THEN
+    CURRENT_DATE as effective_start_date,
+    TO_DATE(SPLIT_PART(runtime, '-', 2), 'DD.MM.YYYY') as end_date
+  ELSE
+    TO_DATE(SPLIT_PART(runtime, '-', 1), 'DD.MM.YYYY') as start_date,
+    TO_DATE(SPLIT_PART(runtime, '-', 2), 'DD.MM.YYYY') as end_date
+END
+```
+
+**3. Budget/CPM De-emphasis:**
+```sql
+-- These fields exist as reference data only
+-- NOT used for primary fulfillment analysis
+budget DECIMAL(15,2),     -- Optional, secondary importance
+cpm DECIMAL(10,4),        -- Optional, secondary importance
+
+-- Primary analysis focuses on:
+-- fulfillment_percentage = (delivered_impressions / impression_goal) * 100
+-- impression_shortfall = impression_goal - delivered_impressions
+```
+
+**CORRECTED Query Patterns:**
+```sql
+-- Primary fulfillment analysis query
+SELECT
+    c.campaign_id,
+    c.campaign_name,
+    c.impression_goal,  -- INTEGER field
+    c.runtime,          -- TEXT field to be parsed
+
+    -- Parse runtime for date filtering
+    CASE
+      WHEN c.runtime LIKE 'ASAP-%' THEN
+        TO_DATE(SPLIT_PART(c.runtime, '-', 2), 'DD.MM.YYYY')
+      ELSE
+        TO_DATE(SPLIT_PART(c.runtime, '-', 2), 'DD.MM.YYYY')
+    END as campaign_end_date,
+
+    -- Core fulfillment calculations
+    COALESCE(SUM(r.total_impressions), 0) as delivered_impressions,
+    (c.impression_goal - COALESCE(SUM(r.total_impressions), 0)) as impression_shortfall,
+
+    CASE
+      WHEN c.impression_goal > 0 THEN
+        (COALESCE(SUM(r.total_impressions), 0)::FLOAT / c.impression_goal * 100)
+      ELSE 0
+    END as fulfillment_percentage
+
+FROM campaigns c
+LEFT JOIN reporting_data r ON (c.campaign_id = r.campaign_id OR c.campaign_id = r.deal_id)
+WHERE
+    -- Filter completed campaigns using parsed end date
+    CASE
+      WHEN c.runtime LIKE 'ASAP-%' THEN
+        TO_DATE(SPLIT_PART(c.runtime, '-', 2), 'DD.MM.YYYY')
+      ELSE
+        TO_DATE(SPLIT_PART(c.runtime, '-', 2), 'DD.MM.YYYY')
+    END < CURRENT_DATE
+    AND c.buyer IS NOT NULL
+GROUP BY c.campaign_id, c.campaign_name, c.impression_goal, c.runtime, c.buyer
+ORDER BY impression_shortfall DESC;  -- Worst fulfillment first
+```
+
+**Upload Validation Corrections:**
+```sql
+-- Validate impression_goal is proper integer
+SELECT
+    COUNT(*) as total_uploads,
+    COUNT(CASE
+        WHEN impression_goal IS NOT NULL
+        AND impression_goal BETWEEN 1 AND 2000000000
+        THEN 1
+    END) as valid_impression_goals,
+    COUNT(CASE
+        WHEN runtime IS NOT NULL
+        AND runtime ~ '^(ASAP|\d{2}\.\d{2}\.\d{4})-\d{2}\.\d{2}\.\d{4}$'
+        THEN 1
+    END) as valid_runtime_formats
+FROM campaigns_upload_staging;
 ```
 
 ---
