@@ -26,12 +26,12 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-# Import your app components (these will be created by backend-engineer)
-# from app.main import app
-# from app.database import get_db, Base
-# from app.models.campaign import Campaign
-# from app.services.runtime_parser import RuntimeParser
-# from app.services.campaign_classifier import CampaignClassifier
+# Import your app components (now implemented)
+from app.main import app
+from app.database import get_db, Base
+from app.models.campaign import Campaign, UploadSession
+# from app.services.runtime_parser import RuntimeParser  # Will be implemented
+# from app.services.campaign_classifier import CampaignClassifier  # Will be implemented
 
 from .fixtures.campaign_test_data import (
     RuntimeFormat,
@@ -71,12 +71,12 @@ def test_db_engine():
     )
 
     # Create all tables
-    # Base.metadata.create_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
 
     yield engine
 
     # Clean up
-    # Base.metadata.drop_all(bind=engine)
+    Base.metadata.drop_all(bind=engine)
     if os.path.exists("./test_campaign_data.db"):
         os.remove("./test_campaign_data.db")
 
@@ -115,16 +115,13 @@ def test_client(test_db_session):
         finally:
             test_db_session.close()
 
-    # app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_db] = override_get_db
 
-    # with TestClient(app) as client:
-    #     yield client
+    with TestClient(app) as client:
+        yield client
 
     # Clean up
-    # app.dependency_overrides.clear()
-
-    # Placeholder for now - backend-engineer will uncomment when app is ready
-    yield None
+    app.dependency_overrides.clear()
 
 
 class MockedDateContext:
@@ -141,10 +138,10 @@ class MockedDateContext:
         self.patcher = None
 
     def __enter__(self):
-        # Mock datetime.date.today() to return our test date
-        self.patcher = patch('datetime.date.today')
-        mock_today = self.patcher.start()
-        mock_today.return_value = self.mock_current_date
+        # Mock date.today() in the campaign model module
+        self.patcher = patch('app.models.campaign.date')
+        mock_date = self.patcher.start()
+        mock_date.today.return_value = self.mock_current_date
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -268,6 +265,18 @@ def data_conversion_cases():
         'budgets': DataConversionTestData.BUDGET_FORMATS,
         'impression_goals': DataConversionTestData.IMPRESSION_GOAL_FORMATS
     }
+
+
+@pytest.fixture
+def sample_campaigns():
+    """Provides complete campaign fixtures for integration tests"""
+    return ComprehensiveCampaignFixtures.get_sample_campaigns()
+
+
+@pytest.fixture
+def malformed_campaigns():
+    """Provides malformed campaign data for error handling tests"""
+    return ComprehensiveCampaignFixtures.get_malformed_campaigns()
 
 
 # Campaign Completion Testing Scenarios

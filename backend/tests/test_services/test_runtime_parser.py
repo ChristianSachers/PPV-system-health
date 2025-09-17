@@ -18,25 +18,8 @@ from typing import Optional, Dict, Any
 # Import your fixtures
 from ..fixtures.campaign_test_data import RuntimeFormat
 
-# Mock imports - backend-engineer will replace with actual service imports
-# from app.services.runtime_parser import RuntimeParser, ParseResult
-# from app.exceptions import RuntimeParseError
-
-
-class MockParseResult:
-    """Mock result class - backend-engineer will replace with actual implementation"""
-    def __init__(self, start_date: Optional[date], end_date: date, is_running: bool = True):
-        self.start_date = start_date
-        self.end_date = end_date
-        self.is_running = is_running
-
-
-class MockRuntimeParser:
-    """Mock parser - backend-engineer will replace with actual implementation"""
-    def parse(self, runtime_string: str) -> MockParseResult:
-        # This is where the actual parsing logic will go
-        # For now, just raise NotImplementedError to demonstrate Red phase
-        raise NotImplementedError("RuntimeParser.parse() not yet implemented")
+# Real service imports - now implemented!
+from app.services.runtime_parser import RuntimeParser, ParseResult, RuntimeParseError
 
 
 # =============================================================================
@@ -54,7 +37,7 @@ class TestRuntimeParserDiscovery:
 
     def setup_method(self):
         """Setup for each test - backend-engineer will inject real service"""
-        self.parser = MockRuntimeParser()
+        self.parser = RuntimeParser()
 
     @pytest.mark.parametrize("test_case", RuntimeFormat.ASAP_FORMATS)
     def test_asap_format_hypothesis(self, test_case):
@@ -71,17 +54,13 @@ class TestRuntimeParserDiscovery:
         expected_start = test_case["expected_start"]  # Should be None for ASAP
         expected_end = test_case["expected_end"]
 
-        # ACT - This will fail initially (Red phase)
-        with pytest.raises(NotImplementedError):
-            result = self.parser.parse(runtime_string)
+        # ACT - Green phase: test actual implementation
+        result = self.parser.parse(runtime_string)
 
-        # This is what we expect after implementation (Green phase):
-        # result = self.parser.parse(runtime_string)
-
-        # ASSERT - Document expected behavior for backend-engineer
-        # assert result.start_date == expected_start
-        # assert result.end_date == expected_end
-        # assert isinstance(result.end_date, date)
+        # ASSERT - Validate parsing behavior
+        assert result.start_date == expected_start
+        assert result.end_date == expected_end
+        assert isinstance(result.end_date, date)
 
         # Learning Documentation: ASAP means start_date = None
         print(f"Learning: {test_case['description']} - start should be {expected_start}")
@@ -101,17 +80,13 @@ class TestRuntimeParserDiscovery:
         expected_start = test_case["expected_start"]
         expected_end = test_case["expected_end"]
 
-        # ACT - Red phase: will fail until implemented
-        with pytest.raises(NotImplementedError):
-            result = self.parser.parse(runtime_string)
-
-        # Expected after implementation:
-        # result = self.parser.parse(runtime_string)
+        # ACT - Green phase: test actual implementation
+        result = self.parser.parse(runtime_string)
 
         # ASSERT - Both dates should be parsed
-        # assert result.start_date == expected_start
-        # assert result.end_date == expected_end
-        # assert result.start_date is not None  # Unlike ASAP format
+        assert result.start_date == expected_start
+        assert result.end_date == expected_end
+        assert result.start_date is not None  # Unlike ASAP format
 
         print(f"Learning: {test_case['description']} - both dates defined")
 
@@ -130,7 +105,7 @@ class TestRuntimeParserErrorDiscovery:
     """
 
     def setup_method(self):
-        self.parser = MockRuntimeParser()
+        self.parser = RuntimeParser()
 
     @pytest.mark.parametrize("test_case", RuntimeFormat.MALFORMED_FORMATS)
     def test_malformed_format_error_handling(self, test_case):
@@ -160,8 +135,8 @@ class TestRuntimeParserErrorDiscovery:
         This test documents a specific edge case we discovered.
         As we learn more, this test might evolve.
         """
-        # HYPOTHESIS: Empty string should raise ValueError
-        with pytest.raises(ValueError):
+        # HYPOTHESIS: Empty string should raise RuntimeParseError
+        with pytest.raises(RuntimeParseError):
             self.parser.parse("")
 
         # Alternative hypothesis to explore:
@@ -184,7 +159,7 @@ class TestCampaignCompletionDiscovery:
     """
 
     def setup_method(self):
-        self.parser = MockRuntimeParser()
+        self.parser = RuntimeParser()
 
     def test_completion_logic_hypothesis(self, mock_current_date):
         """
@@ -242,7 +217,7 @@ class TestRuntimeParserIntegrationDiscovery:
         Discovery Pattern: Test against realistic data combinations
         Learning Goal: Ensure parser works with complete campaign records
         """
-        parser = MockRuntimeParser()
+        parser = RuntimeParser()
 
         # Test all campaign formats we discovered in our fixtures
         for campaign in sample_campaigns:

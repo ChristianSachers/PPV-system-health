@@ -18,32 +18,8 @@ from typing import Union, Optional, Dict, Any
 # Import your fixtures
 from ..fixtures.campaign_test_data import DataConversionTestData
 
-# Mock imports - backend-engineer will replace with actual service imports
-# from app.services.data_conversion import DataConverter, ConversionResult
-# from app.exceptions import ConversionError
-
-
-class MockConversionResult:
-    """Mock result class - backend-engineer will replace with actual implementation"""
-    def __init__(self, value: Union[float, int], original_format: str, conversion_method: str):
-        self.value = value
-        self.original_format = original_format
-        self.conversion_method = conversion_method
-
-
-class MockDataConverter:
-    """Mock converter - backend-engineer will replace with actual implementation"""
-    def convert_european_decimal(self, value_string: str) -> float:
-        # This is where the actual conversion logic will go
-        raise NotImplementedError("DataConverter.convert_european_decimal() not yet implemented")
-
-    def convert_impression_goal(self, value_string: str) -> int:
-        # Handle impression goal as single INTEGER value (1 to 2,000,000,000)
-        raise NotImplementedError("DataConverter.convert_impression_goal() not yet implemented")
-
-    def validate_numeric_range(self, value: float, min_val: float, max_val: float) -> bool:
-        # Validate values are within expected business ranges
-        raise NotImplementedError("DataConverter.validate_numeric_range() not yet implemented")
+# Real service imports - now implemented!
+from app.services.data_conversion import DataConverter, ConversionResult, ConversionError
 
 
 # =============================================================================
@@ -61,8 +37,8 @@ class TestEuropeanNumberConversionDiscovery:
     """
 
     def setup_method(self):
-        """Setup for each test - backend-engineer will inject real service"""
-        self.converter = MockDataConverter()
+        """Setup for each test - now using real DataConverter service"""
+        self.converter = DataConverter()
 
     @pytest.mark.parametrize("test_case", DataConversionTestData.BUDGET_FORMATS)
     def test_budget_conversion_hypothesis(self, test_case):
@@ -78,16 +54,12 @@ class TestEuropeanNumberConversionDiscovery:
         input_string = test_case["input"]
         expected_value = test_case["expected"]
 
-        # ACT - Red phase: will fail until implemented
-        with pytest.raises(NotImplementedError):
-            result = self.converter.convert_european_decimal(input_string)
+        # ACT - Green phase: test actual implementation
+        result = self.converter.convert_european_decimal(input_string)
 
-        # Expected after implementation (Green phase):
-        # result = self.converter.convert_european_decimal(input_string)
-
-        # ASSERT - Document expected conversion behavior
-        # assert abs(result - expected_value) < 0.01  # Float precision handling
-        # assert isinstance(result, float)
+        # ASSERT - Validate conversion behavior
+        assert abs(result - expected_value) < 0.01  # Float precision handling
+        assert isinstance(result, float)
 
         # Learning Documentation
         print(f"Learning: '{input_string}' -> {expected_value} ({test_case['description']})")
@@ -147,7 +119,7 @@ class TestImpressionGoalConversionDiscovery:
     """
 
     def setup_method(self):
-        self.converter = MockDataConverter()
+        self.converter = DataConverter()
 
     @pytest.mark.parametrize("test_case", DataConversionTestData.IMPRESSION_GOAL_FORMATS)
     def test_impression_goal_conversion_hypothesis(self, test_case):
@@ -163,16 +135,12 @@ class TestImpressionGoalConversionDiscovery:
         input_string = test_case["input"]
         expected_value = test_case["expected"]
 
-        # ACT - Red phase: will fail until implemented
-        with pytest.raises(NotImplementedError):
-            result = self.converter.convert_impression_goal(input_string)
+        # ACT - Green phase: test actual implementation
+        result = self.converter.convert_impression_goal(input_string)
 
-        # Expected after implementation (Green phase):
-        # result = self.converter.convert_impression_goal(input_string)
-
-        # ASSERT - Document expected conversion behavior
-        # assert result == expected_value
-        # assert isinstance(result, int)
+        # ASSERT - Validate conversion behavior
+        assert result == expected_value
+        assert isinstance(result, int)
 
         # Learning Documentation
         print(f"Learning: '{input_string}' -> {expected_value} ({test_case['description']})")
@@ -195,11 +163,13 @@ class TestImpressionGoalConversionDiscovery:
 
         for case in business_validation_cases:
             if case["should_error"]:
-                with pytest.raises((ValueError, NotImplementedError)):
+                with pytest.raises(ValueError):
                     result = self.converter.convert_impression_goal(case["input"])
             else:
-                with pytest.raises(NotImplementedError):
-                    result = self.converter.convert_impression_goal(case["input"])
+                # Valid case - should succeed
+                result = self.converter.convert_impression_goal(case["input"])
+                assert isinstance(result, int)
+                assert result > 0
 
             print(f"Learning: {case['reason']} - '{case['input']}'")
 
@@ -217,7 +187,7 @@ class TestConversionErrorDiscovery:
     """
 
     def setup_method(self):
-        self.converter = MockDataConverter()
+        self.converter = DataConverter()
 
     def test_invalid_format_error_handling(self):
         """
@@ -278,7 +248,7 @@ class TestConversionPerformanceDiscovery:
     """
 
     def setup_method(self):
-        self.converter = MockDataConverter()
+        self.converter = DataConverter()
 
     def test_large_value_handling_discovery(self):
         """
@@ -341,7 +311,7 @@ class TestConversionBusinessRuleIntegration:
         - CPM calculation should be consistent: budget / (impressions / 1000)
         - European format conversion should preserve precision
         """
-        converter = MockDataConverter()
+        converter = DataConverter()
 
         for campaign in sample_campaigns:
             budget_string = campaign["budget_eur"]
@@ -365,7 +335,7 @@ class TestConversionBusinessRuleIntegration:
 
         Business Consistency: Impression goals should make sense with budgets and CPM
         """
-        converter = MockDataConverter()
+        converter = DataConverter()
 
         for campaign in sample_campaigns:
             impression_goal = campaign["impression_goal"]  # Now INTEGER value

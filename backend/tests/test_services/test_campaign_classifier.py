@@ -17,25 +17,8 @@ from typing import Dict, Any, List
 # Import your fixtures
 from ..fixtures.campaign_test_data import CampaignClassificationData
 
-# Mock imports - backend-engineer will replace with actual service imports
-# from app.services.campaign_classifier import CampaignClassifier, ClassificationResult
-# from app.exceptions import ClassificationError
-
-
-class MockClassificationResult:
-    """Mock result class - backend-engineer will replace with actual implementation"""
-    def __init__(self, campaign_type: str, confidence: float = 1.0, reasoning: str = ""):
-        self.campaign_type = campaign_type
-        self.confidence = confidence
-        self.reasoning = reasoning
-
-
-class MockCampaignClassifier:
-    """Mock classifier - backend-engineer will replace with actual implementation"""
-    def classify(self, buyer: str) -> MockClassificationResult:
-        # This is where the actual classification logic will go
-        # For now, raise NotImplementedError to demonstrate Red phase
-        raise NotImplementedError("CampaignClassifier.classify() not yet implemented")
+# Real service imports - now implemented!
+from app.services.campaign_classifier import CampaignClassifier, ClassificationResult, ClassificationError
 
 
 # =============================================================================
@@ -53,7 +36,7 @@ class TestCampaignClassificationDiscovery:
 
     def setup_method(self):
         """Setup for each test - backend-engineer will inject real service"""
-        self.classifier = MockCampaignClassifier()
+        self.classifier = CampaignClassifier()
 
     @pytest.mark.parametrize("test_case", CampaignClassificationData.CAMPAIGNS)
     def test_campaign_classification_hypothesis(self, test_case):
@@ -68,16 +51,12 @@ class TestCampaignClassificationDiscovery:
         buyer = test_case["buyer"]
         expected_type = test_case["expected_type"]
 
-        # ACT - Red phase: will fail until implemented
-        with pytest.raises(NotImplementedError):
-            result = self.classifier.classify(buyer)
+        # ACT - Green phase: test actual implementation
+        result = self.classifier.classify(buyer)
 
-        # Expected after implementation (Green phase):
-        # result = self.classifier.classify(buyer)
-
-        # ASSERT - Document expected classification behavior
-        # assert result.campaign_type == expected_type
-        # assert result.confidence > 0.5  # Should be confident in classification
+        # ASSERT - Validate classification behavior
+        assert result.campaign_type == expected_type
+        assert result.confidence > 0.5  # Should be confident in classification
 
         # Learning Documentation
         print(f"Learning: {test_case['description']} -> {expected_type}")
@@ -94,13 +73,11 @@ class TestCampaignClassificationDiscovery:
         buyer = test_case["buyer"]
         expected_type = test_case["expected_type"]
 
-        # ACT - Red phase
-        with pytest.raises(NotImplementedError):
-            result = self.classifier.classify(buyer)
+        # ACT - Green phase: test actual implementation
+        result = self.classifier.classify(buyer)
 
-        # Expected behavior:
-        # result = self.classifier.classify(buyer)
-        # assert result.campaign_type == expected_type
+        # ASSERT - Validate classification behavior
+        assert result.campaign_type == expected_type
 
         print(f"Learning: {test_case['description']} -> {expected_type}")
 
@@ -119,7 +96,7 @@ class TestClassificationBoundaryDiscovery:
     """
 
     def setup_method(self):
-        self.classifier = MockCampaignClassifier()
+        self.classifier = CampaignClassifier()
 
     def test_case_sensitivity_boundary(self):
         """
@@ -170,7 +147,7 @@ class TestClassificationBoundaryDiscovery:
         Edge Case Discovery: What if buyer field is missing from data?
         """
         edge_cases = [
-            {"buyer": None, "expected_error": ValueError, "reason": "None buyer should error"},
+            {"buyer": None, "expected_error": ClassificationError, "reason": "None buyer should error"},
             # We might discover more edge cases during implementation
         ]
 
@@ -196,7 +173,7 @@ class TestClassificationRuleEvolution:
     """
 
     def setup_method(self):
-        self.classifier = MockCampaignClassifier()
+        self.classifier = CampaignClassifier()
 
     def test_complex_buyer_string_patterns(self):
         """
@@ -279,7 +256,7 @@ class TestClassificationIntegrationDiscovery:
         Discovery Goal: Ensure classifier works with real campaign records
         Validation: Check that classifications match expected business rules
         """
-        classifier = MockCampaignClassifier()
+        classifier = CampaignClassifier()
 
         for campaign in sample_campaigns:
             buyer = campaign["buyer"]
@@ -302,7 +279,7 @@ class TestClassificationIntegrationDiscovery:
         Performance Consideration: Can we classify multiple campaigns efficiently?
         Future Enhancement: Batch processing might be needed for large datasets
         """
-        classifier = MockCampaignClassifier()
+        classifier = CampaignClassifier()
         buyers = [campaign["buyer"] for campaign in sample_campaigns]
 
         # Future batch method test:

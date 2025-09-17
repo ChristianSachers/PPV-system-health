@@ -24,10 +24,10 @@ from ..fixtures.campaign_test_data import (
     ComprehensiveCampaignFixtures
 )
 
-# Mock imports - backend-engineer will replace with actual model imports
-# from app.models.campaign import Campaign
-# from app.database import Base
-# from sqlalchemy import Column, String, Float, Date, Boolean, Integer
+# Real imports - now implemented
+from app.models.campaign import Campaign
+from app.database import Base
+from sqlalchemy import Column, String, Float, Date, Boolean, Integer
 
 
 class MockCampaign:
@@ -83,35 +83,27 @@ class TestCampaignUUIDDiscovery:
         - How do we validate UUID format during model creation?
         - What happens if the same UUID is used twice?
         """
-        # ARRANGE - Use excellent UUID test fixtures
+        # ARRANGE - Use corrected data format with runtime TEXT field
         campaign_data = {
             "id": uuid_string,
             "name": "Test Campaign for UUID Validation",
-            "runtime_start": None,
-            "runtime_end": date(2025, 6, 30),
-            "impression_goal": 1000000,
+            "runtime": "ASAP-30.06.2025",  # TEXT field as per corrected requirements
+            "impression_goal": 1000000,  # INTEGER field as per corrected requirements
             "budget_eur": 10000.00,
             "cpm_eur": 2.00,
-            "buyer": "Not set",
-            "campaign_type": "campaign",
-            "is_running": True
+            "buyer": "Not set"
         }
 
-        # ACT - Red phase: will fail until model implemented
-        with pytest.raises(NotImplementedError):
-            campaign = MockCampaign(**campaign_data)
-            # test_db_session.add(campaign)
-            # test_db_session.commit()
+        # ACT - Now using real Campaign model (GREEN phase)
+        campaign = Campaign(**campaign_data)
+        test_db_session.add(campaign)
+        test_db_session.commit()
 
-        # Expected after implementation:
-        # campaign = Campaign(**campaign_data)
-        # test_db_session.add(campaign)
-        # test_db_session.commit()
-
-        # Retrieve and verify UUID preservation
-        # retrieved = test_db_session.query(Campaign).filter_by(id=uuid_string).first()
-        # assert retrieved.id == uuid_string
-        # assert str(UUID(retrieved.id)) == uuid_string  # Validate UUID format
+        # ASSERT - Verify UUID preservation and model functionality
+        retrieved = test_db_session.query(Campaign).filter_by(id=uuid_string).first()
+        assert retrieved.id == uuid_string
+        assert str(UUID(retrieved.id)) == uuid_string  # Validate UUID format
+        assert retrieved.entity_type == "campaign"  # Campaign vs Deal logic
 
         print(f"Learning: Valid UUID '{uuid_string}' should be preserved exactly")
 
@@ -171,16 +163,32 @@ class TestCampaignUUIDDiscovery:
         campaign2_data = campaign1_data.copy()
         campaign2_data["name"] = "Duplicate UUID Campaign"
 
-        with pytest.raises(NotImplementedError):
-            # campaign1 = Campaign(**campaign1_data)
-            # campaign2 = Campaign(**campaign2_data)
-            # test_db_session.add(campaign1)
-            # test_db_session.commit()
+        # Test actual UUID uniqueness behavior (GREEN phase)
+        campaign1_data = {
+            "id": uuid_string,
+            "name": "First Campaign",
+            "runtime": "ASAP-30.06.2025",
+            "impression_goal": 1000000,
+            "budget_eur": 10000.00,
+            "cpm_eur": 2.00,
+            "buyer": "Not set"
+        }
 
-            # This should raise IntegrityError if UUID uniqueness enforced
-            # test_db_session.add(campaign2)
-            # test_db_session.commit()
-            pass
+        # Second campaign with same UUID - should this be allowed?
+        campaign2_data = campaign1_data.copy()
+        campaign2_data["name"] = "Duplicate UUID Campaign"
+
+        # Create first campaign
+        campaign1 = Campaign(**campaign1_data)
+        test_db_session.add(campaign1)
+        test_db_session.commit()
+
+        # Attempt to create second campaign with same UUID
+        # This should raise IntegrityError due to primary key constraint
+        with pytest.raises(IntegrityError):
+            campaign2 = Campaign(**campaign2_data)
+            test_db_session.add(campaign2)
+            test_db_session.commit()
 
         print("Learning: UUID uniqueness constraint needs business decision")
 
