@@ -17,6 +17,8 @@ Key Business Rules:
 from typing import Dict, Any, Optional
 from enum import Enum
 
+from app.constants.business import BusinessConstants
+
 
 class CampaignType(Enum):
     """Enumeration of campaign classification types"""
@@ -56,8 +58,7 @@ class CampaignClassifier:
     This binary classification drives fulfillment analysis categorization.
     """
 
-    # Business rule constants
-    CAMPAIGN_BUYER_VALUE = "Not set"
+    # Business rule constants now centralized in BusinessConstants
 
     @staticmethod
     def classify(buyer: str) -> ClassificationResult:
@@ -92,11 +93,11 @@ class CampaignClassifier:
             raise TypeError("Buyer field must be a string")
 
         # Business rule: Exact match for "Not set" indicates campaign
-        if buyer == CampaignClassifier.CAMPAIGN_BUYER_VALUE:
+        if buyer == BusinessConstants.CAMPAIGN_BUYER_VALUE:
             return ClassificationResult(
                 campaign_type=CampaignType.CAMPAIGN.value,
                 confidence=1.0,
-                reasoning=f"Exact match: buyer = '{CampaignClassifier.CAMPAIGN_BUYER_VALUE}'"
+                reasoning=f"Exact match: buyer = '{BusinessConstants.CAMPAIGN_BUYER_VALUE}'"
             )
 
         # All other values (including case variations, whitespace, etc.) are deals

@@ -28,6 +28,7 @@ from fastapi.responses import JSONResponse
 # Import our database and models
 from ..database import get_db
 from ..models.campaign import Campaign
+from ..constants.business import BusinessConstants
 
 logger = logging.getLogger(__name__)
 
@@ -145,9 +146,9 @@ async def get_campaigns(
     # Filter by campaign type (campaign vs deal)
     if campaign_type:
         if campaign_type.lower() == "campaign":
-            query = query.filter(Campaign.buyer == "Not set")
+            query = query.filter(Campaign.buyer == BusinessConstants.CAMPAIGN_BUYER_VALUE)
         elif campaign_type.lower() == "deal":
-            query = query.filter(Campaign.buyer != "Not set")
+            query = query.filter(Campaign.buyer != BusinessConstants.CAMPAIGN_BUYER_VALUE)
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -272,8 +273,8 @@ async def get_analytics_summary(
     logger.info("Generating analytics summary for dashboard")
 
     # Basic counts using efficient aggregation queries
-    total_campaigns = db.query(Campaign).filter(Campaign.buyer == "Not set").count()
-    total_deals = db.query(Campaign).filter(Campaign.buyer != "Not set").count()
+    total_campaigns = db.query(Campaign).filter(Campaign.buyer == BusinessConstants.CAMPAIGN_BUYER_VALUE).count()
+    total_deals = db.query(Campaign).filter(Campaign.buyer != BusinessConstants.CAMPAIGN_BUYER_VALUE).count()
     running_campaigns = db.query(Campaign).filter(Campaign.is_running == True).count()
     completed_campaigns = db.query(Campaign).filter(Campaign.is_running == False).count()
 
@@ -373,8 +374,8 @@ async def get_performance_metrics(
     logger.info("Generating detailed performance metrics")
 
     # Separate campaigns and deals for comparison
-    campaigns = db.query(Campaign).filter(Campaign.buyer == "Not set").all()
-    deals = db.query(Campaign).filter(Campaign.buyer != "Not set").all()
+    campaigns = db.query(Campaign).filter(Campaign.buyer == BusinessConstants.CAMPAIGN_BUYER_VALUE).all()
+    deals = db.query(Campaign).filter(Campaign.buyer != BusinessConstants.CAMPAIGN_BUYER_VALUE).all()
 
     def analyze_entity_group(entities: List[Campaign], entity_type: str) -> Dict[str, Any]:
         """Analyze performance metrics for a group of entities"""

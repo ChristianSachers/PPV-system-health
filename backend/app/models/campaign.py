@@ -19,6 +19,7 @@ from sqlalchemy.orm import validates
 from typing import Optional
 
 from .base import BaseModel, UUIDValidationMixin, CampaignBusinessRuleMixin
+from app.constants.business import BusinessConstants
 
 
 class Campaign(BaseModel, UUIDValidationMixin, CampaignBusinessRuleMixin):
@@ -189,7 +190,7 @@ class Campaign(BaseModel, UUIDValidationMixin, CampaignBusinessRuleMixin):
         Returns:
             str: 'campaign' or 'deal'
         """
-        return 'campaign' if self.buyer == 'Not set' else 'deal'
+        return 'campaign' if BusinessConstants.is_campaign_buyer(self.buyer) else 'deal'
 
     @hybrid_property
     def fulfillment_percentage(self) -> Optional[float]:
