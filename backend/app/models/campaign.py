@@ -100,8 +100,25 @@ class Campaign(BaseModel, UUIDValidationMixin, CampaignBusinessRuleMixin):
         if 'runtime' in kwargs:
             if not kwargs['runtime'].strip():
                 raise ValueError("Runtime cannot be empty")
-            # Parse runtime and set start/end dates
-            self._parse_and_set_runtime_dates(kwargs)
+
+            # Use RuntimeParser to parse runtime string
+            try:
+                from app.services.runtime_parser import RuntimeParser
+                parse_result = RuntimeParser.parse(kwargs['runtime'])
+
+                # Convert RuntimeParser result to match exact current Campaign format
+                kwargs['runtime_start'] = (
+                    datetime.combine(parse_result.start_date, datetime.min.time())
+                    if parse_result.start_date else None
+                )
+                kwargs['runtime_end'] = datetime.combine(parse_result.end_date, datetime.min.time())
+
+                # Validate date logic (preserve existing validation)
+                self.validate_date_logic(kwargs.get('runtime_start'), kwargs.get('runtime_end'))
+
+            except Exception as e:
+                # Maintain exact same error message format for backward compatibility
+                raise ValueError(f"Error parsing runtime '{kwargs['runtime']}': {e}")
 
         # Set buyer with proper handling
         if 'buyer' in kwargs and kwargs['buyer'] is None:
@@ -114,52 +131,6 @@ class Campaign(BaseModel, UUIDValidationMixin, CampaignBusinessRuleMixin):
         if hasattr(self, 'runtime_end') and self.runtime_end:
             self.is_running = self._calculate_is_running()
 
-    def _parse_and_set_runtime_dates(self, kwargs: dict) -> None:
-        """
-        Parse runtime TEXT field and set start/end date fields.
-
-        Args:
-            kwargs: Dictionary containing runtime field to parse
-        """
-        runtime_text = kwargs['runtime']
-
-        try:
-            if runtime_text.startswith('ASAP-'):
-                # ASAP format: "ASAP-30.06.2025"
-                end_date_str = runtime_text[5:]  # Remove "ASAP-"
-                kwargs['runtime_start'] = None
-                kwargs['runtime_end'] = self._parse_german_date(end_date_str)
-            elif '-' in runtime_text and not runtime_text.startswith('ASAP'):
-                # Standard format: "07.07.2025-24.07.2025"
-                start_str, end_str = runtime_text.split('-', 1)
-                kwargs['runtime_start'] = self._parse_german_date(start_str)
-                kwargs['runtime_end'] = self._parse_german_date(end_str)
-            else:
-                raise ValueError(f"Invalid runtime format: {runtime_text}")
-
-            # Validate date logic
-            self.validate_date_logic(kwargs.get('runtime_start'), kwargs.get('runtime_end'))
-
-        except Exception as e:
-            raise ValueError(f"Error parsing runtime '{runtime_text}': {e}")
-
-    def _parse_german_date(self, date_str: str) -> datetime:
-        """
-        Parse German date format (DD.MM.YYYY) to datetime.
-
-        Args:
-            date_str: Date string in German format
-
-        Returns:
-            datetime: Parsed date as datetime object
-        """
-        try:
-            # Parse DD.MM.YYYY format
-            day, month, year = date_str.strip().split('.')
-            parsed_date = date(int(year), int(month), int(day))
-            return datetime.combine(parsed_date, datetime.min.time())
-        except (ValueError, AttributeError) as e:
-            raise ValueError(f"Invalid German date format '{date_str}'. Expected DD.MM.YYYY") from e
 
     def _calculate_is_running(self) -> bool:
         """

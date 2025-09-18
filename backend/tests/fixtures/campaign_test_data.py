@@ -17,6 +17,9 @@ from uuid import UUID
 import pytest
 from typing import Dict, List, Any, Optional
 
+# Import RuntimeParseError for test expectations
+from app.services.runtime_parser import RuntimeParseError
+
 
 class RuntimeFormat:
     """Test data demonstrating Runtime parsing complexity"""
@@ -75,32 +78,32 @@ class RuntimeFormat:
     MALFORMED_FORMATS = [
         {
             "runtime_string": "ASAP-30.13.2025",  # Invalid month
-            "expected_error": ValueError,
+            "expected_error": RuntimeParseError,
             "description": "Invalid month in ASAP format"
         },
         {
             "runtime_string": "32.01.2025-31.01.2025",  # Invalid day
-            "expected_error": ValueError,
+            "expected_error": RuntimeParseError,
             "description": "Invalid day in standard format"
         },
         {
             "runtime_string": "07.07.2025-06.07.2025",  # End before start
-            "expected_error": ValueError,
+            "expected_error": RuntimeParseError,
             "description": "End date before start date"
         },
         {
             "runtime_string": "ASAP",  # Missing end date
-            "expected_error": ValueError,
+            "expected_error": RuntimeParseError,
             "description": "Incomplete ASAP format"
         },
         {
             "runtime_string": "07.07.2025-",  # Missing end date
-            "expected_error": ValueError,
+            "expected_error": RuntimeParseError,
             "description": "Missing end date in standard format"
         },
         {
             "runtime_string": "",  # Empty string
-            "expected_error": ValueError,
+            "expected_error": RuntimeParseError,
             "description": "Empty runtime string"
         }
     ]

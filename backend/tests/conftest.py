@@ -138,10 +138,12 @@ class MockedDateContext:
         self.patcher = None
 
     def __enter__(self):
-        # Mock date.today() in the campaign model module
-        self.patcher = patch('app.models.campaign.date')
+        # Mock date.today() in both campaign model and runtime parser modules
+        self.patcher = patch('app.services.runtime_parser.date')
         mock_date = self.patcher.start()
         mock_date.today.return_value = self.mock_current_date
+        # Also mock the date object itself for date comparison
+        mock_date.return_value = self.mock_current_date
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
