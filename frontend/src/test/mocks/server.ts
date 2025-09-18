@@ -9,13 +9,13 @@
  */
 
 import { setupServer } from 'msw/node'
-import { rest } from 'msw'
+import { http, HttpResponse } from 'msw'
 
 // Mock API responses for campaign data
 const campaignHandlers = [
   // GET /api/v1/campaigns - List all campaigns with filtering
-  rest.get('*/api/v1/campaigns', (req, res, ctx) => {
-    const url = new URL(req.url)
+  http.get('*/api/v1/campaigns', ({ request }) => {
+    const url = new URL(request.url)
     const type = url.searchParams.get('type')
     const running = url.searchParams.get('running')
     const search = url.searchParams.get('search')
@@ -36,10 +36,7 @@ const campaignHandlers = [
       )
     }
 
-    return res(
-      ctx.status(200),
-      ctx.json(campaigns)
-    )
+    return HttpResponse.json({ data: campaigns })
   }),
 
   // GET /api/v1/campaigns/{id} - Get specific campaign
@@ -358,68 +355,4 @@ export const mockServerResponses = {
   }
 }
 
-/**
- * USAGE GUIDE FOR UI-DESIGN-EXPERT:
- *
- * DISCOVERY TDD API MOCKING PATTERNS:
- *
- * 1. Basic Component Testing:
- *    ```typescript
- *    import { mockServerResponses } from '@/test/mocks/server'
- *
- *    test('should display campaigns', async () => {
- *      mockServerResponses.campaigns()
- *      render(<CampaignList />)
- *      // Test component behavior
- *    })
- *    ```
- *
- * 2. Error State Discovery:
- *    ```typescript
- *    test('should handle network errors', async () => {
- *      mockServerResponses.networkError()
- *      render(<CampaignList />)
- *      // Test error handling behavior
- *    })
- *    ```
- *
- * 3. Loading State Testing:
- *    ```typescript
- *    test('should show loading spinner', async () => {
- *      mockServerResponses.delayedResponse('/api/v1/campaigns', 1000)
- *      render(<CampaignList />)
- *      // Test loading state behavior
- *    })
- *    ```
- *
- * 4. Upload Flow Discovery:
- *    ```typescript
- *    test('should handle file upload', async () => {
- *      mockServerResponses.uploadSuccess(10, 2)
- *      render(<FileUpload />)
- *      // Test upload behavior
- *    })
- *    ```
- *
- * 5. Custom Response Testing:
- *    ```typescript
- *    import { server } from '@/test/mocks/server'
- *    import { rest } from 'msw'
- *
- *    test('should handle custom scenario', async () => {
- *      server.use(
- *        rest.get('*/api/v1/campaigns', (req, res, ctx) => {
- *          return res(ctx.status(200), ctx.json(customData))
- *        })
- *      )
- *      // Test with custom data
- *    })
- *    ```
- *
- * DISCOVERY TESTING APPROACH:
- * - Start with successful API responses to test happy path
- * - Add error scenarios to discover error handling requirements
- * - Test loading states to understand user experience needs
- * - Use custom responses to explore edge cases and business rules
- * - Mock different data scenarios to understand UI adaptability
- */
+// Mock Service Worker usage examples available in project documentation
