@@ -82,16 +82,16 @@ class Campaign(BaseModel, UUIDValidationMixin, CampaignBusinessRuleMixin):
         if 'impression_goal' in kwargs:
             kwargs['impression_goal'] = self.validate_impression_goal_range(kwargs['impression_goal'])
 
+        # Handle typo in test data (cmp_eur -> cpm_eur) - MUST happen before validation
+        if 'cmp_eur' in kwargs:
+            kwargs['cpm_eur'] = kwargs.pop('cmp_eur')
+
         # Validate positive financial values
         if 'budget_eur' in kwargs:
             kwargs['budget_eur'] = self.validate_positive_value('Budget', kwargs['budget_eur'])
 
-        if 'cmp_eur' in kwargs:
+        if 'cpm_eur' in kwargs:
             kwargs['cpm_eur'] = self.validate_positive_value('CPM', kwargs['cpm_eur'])
-
-        # Handle typo in test data (cmp_eur -> cpm_eur)
-        if 'cmp_eur' in kwargs:
-            kwargs['cpm_eur'] = kwargs.pop('cmp_eur')
 
         # Validate required fields
         if 'name' in kwargs and not kwargs['name'].strip():
