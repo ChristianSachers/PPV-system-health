@@ -20,6 +20,9 @@ import re
 from datetime import datetime, date
 from typing import Dict, Any, Optional, Tuple
 
+# Import unified exception hierarchy
+from app.exceptions import RuntimeParsingError, BusinessRuleError
+
 
 class RuntimeParseError(Exception):
     """Custom exception for runtime parsing errors"""
@@ -84,7 +87,15 @@ class RuntimeParser:
             raise TypeError("Runtime string must be a string")
 
         if not runtime_string.strip():
-            raise RuntimeParseError("Runtime string cannot be empty")
+            raise RuntimeParsingError(
+                "Runtime string cannot be empty",
+                details={
+                    "service": "RuntimeParser",
+                    "method": "parse",
+                    "input_value": runtime_string,
+                    "validation_context": "empty_runtime_string"
+                }
+            )
 
         cleaned_runtime = runtime_string.strip()
 
@@ -103,7 +114,16 @@ class RuntimeParser:
             return RuntimeParser._parse_standard_format(standard_match, current_date)
 
         # No pattern matched
-        raise RuntimeParseError(f"Invalid runtime format: '{runtime_string}'. Expected 'ASAP-DD.MM.YYYY' or 'DD.MM.YYYY-DD.MM.YYYY'")
+        raise RuntimeParsingError(
+            f"Invalid runtime format: '{runtime_string}'. Expected 'ASAP-DD.MM.YYYY' or 'DD.MM.YYYY-DD.MM.YYYY'",
+            details={
+                "service": "RuntimeParser",
+                "method": "parse",
+                "input_value": runtime_string,
+                "expected_patterns": ["ASAP-DD.MM.YYYY", "DD.MM.YYYY-DD.MM.YYYY"],
+                "validation_context": "runtime_format_matching"
+            }
+        )
 
     @staticmethod
     def _parse_asap_format(match: re.Match, current_date: date) -> ParseResult:
@@ -118,7 +138,16 @@ class RuntimeParser:
         try:
             end_date = RuntimeParser._create_date(int(day), int(month), int(year))
         except ValueError as e:
-            raise RuntimeParseError(f"Invalid end date in ASAP format: {e}")
+            raise RuntimeParsingError(
+                f"Invalid end date in ASAP format: {e}",
+                details={
+                    "service": "RuntimeParser",
+                    "method": "_parse_asap_format",
+                    "input_value": f"{day}.{month}.{year}",
+                    "validation_context": "ASAP_date_validation",
+                    "original_error": str(e)
+                }
+            )
 
         # ASAP campaigns have no defined start date
         start_date = None
@@ -142,11 +171,30 @@ class RuntimeParser:
             start_date = RuntimeParser._create_date(int(start_day), int(start_month), int(start_year))
             end_date = RuntimeParser._create_date(int(end_day), int(end_month), int(end_year))
         except ValueError as e:
-            raise RuntimeParseError(f"Invalid date in standard format: {e}")
+            raise RuntimeParsingError(
+                f"Invalid date in standard format: {e}",
+                details={
+                    "service": "RuntimeParser",
+                    "method": "_parse_standard_format",
+                    "input_value": f"{start_day}.{start_month}.{start_year}-{end_day}.{end_month}.{end_year}",
+                    "validation_context": "standard_date_validation",
+                    "original_error": str(e)
+                }
+            )
 
         # Business rule: end date must be after start date
         if end_date <= start_date:
-            raise RuntimeParseError(f"End date {end_date} must be after start date {start_date}")
+            raise BusinessRuleError(
+                f"End date {end_date} must be after start date {start_date}",
+                details={
+                    "service": "RuntimeParser",
+                    "method": "_parse_standard_format",
+                    "business_rule": "end_date_after_start_date",
+                    "provided_start_date": str(start_date),
+                    "provided_end_date": str(end_date),
+                    "business_context": "campaign_date_logic"
+                }
+            )
 
         # Determine if campaign is still running (end date is in future or today)
         is_running = end_date >= current_date

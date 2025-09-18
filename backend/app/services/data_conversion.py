@@ -18,6 +18,9 @@ import re
 from decimal import Decimal, InvalidOperation
 from typing import Union, Optional
 
+# Import unified exception hierarchy
+from app.exceptions import DataValidationError, BusinessRuleError
+
 
 class ConversionError(Exception):
     """Custom exception for data conversion errors"""
@@ -79,7 +82,15 @@ class DataConverter:
             raise TypeError("Input must be a string")
 
         if not value_string.strip():
-            raise ValueError("Input cannot be empty string")
+            raise DataValidationError(
+                "Input cannot be empty string",
+                details={
+                    "service": "DataConverter",
+                    "method": "convert_european_decimal",
+                    "input_value": value_string,
+                    "validation_context": "empty_string_check"
+                }
+            )
 
         # Clean whitespace
         cleaned = value_string.strip()
@@ -101,13 +112,29 @@ class DataConverter:
             try:
                 return float(cleaned)
             except ValueError:
-                raise ValueError(f"Cannot convert '{value_string}' to decimal")
+                raise DataValidationError(
+                    f"Cannot convert '{value_string}' to decimal",
+                    details={
+                        "service": "DataConverter",
+                        "method": "convert_european_decimal",
+                        "input_value": value_string,
+                        "validation_context": "US_format_conversion"
+                    }
+                )
         elif ',' not in cleaned and '.' not in cleaned:
             # Integer format: "1234"
             try:
                 return float(cleaned)
             except ValueError:
-                raise ValueError(f"Cannot convert '{value_string}' to decimal")
+                raise DataValidationError(
+                    f"Cannot convert '{value_string}' to decimal",
+                    details={
+                        "service": "DataConverter",
+                        "method": "convert_european_decimal",
+                        "input_value": value_string,
+                        "validation_context": "integer_format_conversion"
+                    }
+                )
         else:
             # Mixed format - try European conversion
             return DataConverter._convert_european_format(cleaned)
@@ -127,14 +154,31 @@ class DataConverter:
             # Split on comma to separate integer and decimal parts
             parts = value_string.split(',')
             if len(parts) != 2:
-                raise ValueError(f"Invalid European decimal format: '{value_string}' - multiple commas")
+                raise DataValidationError(
+                    f"Invalid European decimal format: '{value_string}' - multiple commas",
+                    details={
+                        "service": "DataConverter",
+                        "method": "_convert_european_format",
+                        "input_value": value_string,
+                        "validation_context": "European_decimal_format"
+                    }
+                )
 
             integer_part = parts[0].replace('.', '')  # Remove thousands separators
             decimal_part = parts[1]
 
             # Validate decimal part is numeric
             if not decimal_part.isdigit():
-                raise ValueError(f"Invalid decimal part: '{decimal_part}'")
+                raise DataValidationError(
+                    f"Invalid decimal part: '{decimal_part}'",
+                    details={
+                        "service": "DataConverter",
+                        "method": "_convert_european_format",
+                        "input_value": value_string,
+                        "decimal_part": decimal_part,
+                        "validation_context": "decimal_part_validation"
+                    }
+                )
 
             # Reconstruct as US format
             cleaned = f"{integer_part}.{decimal_part}"
@@ -145,7 +189,16 @@ class DataConverter:
         try:
             return float(cleaned)
         except ValueError:
-            raise ValueError(f"Cannot convert '{value_string}' to decimal")
+            raise DataValidationError(
+                f"Cannot convert '{value_string}' to decimal",
+                details={
+                    "service": "DataConverter",
+                    "method": "_convert_european_format",
+                    "input_value": value_string,
+                    "cleaned_value": cleaned,
+                    "validation_context": "European_format_conversion"
+                }
+            )
 
     @staticmethod
     def convert_impression_goal(value_string: str) -> int:
@@ -177,25 +230,69 @@ class DataConverter:
             raise TypeError("Input must be a string")
 
         if not value_string.strip():
-            raise ValueError("Impression goal cannot be empty")
+            raise DataValidationError(
+                "Impression goal cannot be empty",
+                details={
+                    "service": "DataConverter",
+                    "method": "convert_impression_goal",
+                    "input_value": value_string,
+                    "validation_context": "empty_impression_goal"
+                }
+            )
 
         cleaned = value_string.strip()
 
         # Impression goals should be pure integers (no decimal formatting)
         if not cleaned.isdigit():
-            raise ValueError(f"Impression goal must be integer value: '{value_string}'")
+            raise DataValidationError(
+                f"Impression goal must be integer value: '{value_string}'",
+                details={
+                    "service": "DataConverter",
+                    "method": "convert_impression_goal",
+                    "input_value": value_string,
+                    "validation_context": "integer_format_validation"
+                }
+            )
 
         try:
             value = int(cleaned)
         except ValueError:
-            raise ValueError(f"Cannot convert '{value_string}' to integer")
+            raise DataValidationError(
+                f"Cannot convert '{value_string}' to integer",
+                details={
+                    "service": "DataConverter",
+                    "method": "convert_impression_goal",
+                    "input_value": value_string,
+                    "validation_context": "integer_conversion"
+                }
+            )
 
         # Business validation: check range
         if value < DataConverter.MIN_IMPRESSION_GOAL:
-            raise ValueError(f"Impression goal must be at least {DataConverter.MIN_IMPRESSION_GOAL}: {value}")
+            raise BusinessRuleError(
+                f"Impression goal must be at least {DataConverter.MIN_IMPRESSION_GOAL}: {value}",
+                details={
+                    "service": "DataConverter",
+                    "method": "convert_impression_goal",
+                    "business_rule": "impression_goal_minimum",
+                    "provided_value": value,
+                    "limit": DataConverter.MIN_IMPRESSION_GOAL,
+                    "business_context": "system_performance_constraint"
+                }
+            )
 
         if value > DataConverter.MAX_IMPRESSION_GOAL:
-            raise ValueError(f"Impression goal cannot exceed {DataConverter.MAX_IMPRESSION_GOAL}: {value}")
+            raise BusinessRuleError(
+                f"Impression goal cannot exceed {DataConverter.MAX_IMPRESSION_GOAL}: {value}",
+                details={
+                    "service": "DataConverter",
+                    "method": "convert_impression_goal",
+                    "business_rule": "impression_goal_maximum",
+                    "provided_value": value,
+                    "limit": DataConverter.MAX_IMPRESSION_GOAL,
+                    "business_context": "system_performance_constraint"
+                }
+            )
 
         return value
 
@@ -222,10 +319,30 @@ class DataConverter:
             ValueError: Value -100.0 is below minimum 0.0
         """
         if value < min_val:
-            raise ValueError(f"Value {value} is below minimum {min_val}")
+            raise BusinessRuleError(
+                f"Value {value} is below minimum {min_val}",
+                details={
+                    "service": "DataConverter",
+                    "method": "validate_numeric_range",
+                    "business_rule": "numeric_range_minimum",
+                    "provided_value": value,
+                    "limit": min_val,
+                    "business_context": "range_validation"
+                }
+            )
 
         if value > max_val:
-            raise ValueError(f"Value {value} exceeds maximum {max_val}")
+            raise BusinessRuleError(
+                f"Value {value} exceeds maximum {max_val}",
+                details={
+                    "service": "DataConverter",
+                    "method": "validate_numeric_range",
+                    "business_rule": "numeric_range_maximum",
+                    "provided_value": value,
+                    "limit": max_val,
+                    "business_context": "range_validation"
+                }
+            )
 
         return True
 
