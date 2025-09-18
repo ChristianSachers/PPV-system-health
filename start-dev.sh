@@ -17,7 +17,7 @@ command_exists() {
 # Function to check if PostgreSQL is running
 check_postgres() {
     if command_exists psql; then
-        if psql -h localhost -U postgres -d postgres -c '\l' >/dev/null 2>&1; then
+        if psql -h localhost -U $(whoami) -d postgres -c '\l' >/dev/null 2>&1; then
             return 0
         fi
     fi
@@ -27,7 +27,7 @@ check_postgres() {
 # Function to create database if it doesn't exist
 create_database() {
     echo -e "${YELLOW}📊 Setting up database...${NC}"
-    if psql -h localhost -U postgres -d postgres -c "CREATE DATABASE ppv_system_health;" 2>/dev/null; then
+    if psql -h localhost -U $(whoami) -d postgres -c "CREATE DATABASE ppv_system_health;" 2>/dev/null; then
         echo -e "${GREEN}✅ Database 'ppv_system_health' created${NC}"
     else
         echo -e "${YELLOW}⚠️  Database might already exist (this is okay)${NC}"

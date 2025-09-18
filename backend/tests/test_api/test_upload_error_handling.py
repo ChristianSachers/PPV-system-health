@@ -31,7 +31,7 @@ import json
 import uuid
 from datetime import datetime
 from typing import Dict, Any, List, Optional
-from unittest.mock import Mock, patch, MagicMock, side_effect
+from unittest.mock import Mock, patch, MagicMock
 
 # HTTP and database error imports
 from fastapi import HTTPException, status

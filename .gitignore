@@ -2,3 +2,8 @@
 node_modules
 #Python
 *.pyc
+#Environment vaiables
+backend/.venv
+#Task tracking
+tasks-iteration1-campaign-data-foundation.md
+frontend/.next/
