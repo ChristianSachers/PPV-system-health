@@ -26,7 +26,7 @@ const customJestConfig = {
   ],
 
   // Module paths and mappings
-  moduleNameMapping: {
+  moduleNameMapper: {
     // Handle module aliases (if you're using them in your Next.js config)
     '^@/(.*)$': '<rootDir>/src/$1',
     '^@/components/(.*)$': '<rootDir>/src/components/$1',
@@ -34,7 +34,10 @@ const customJestConfig = {
     '^@/services/(.*)$': '<rootDir>/src/services/$1',
     '^@/types/(.*)$': '<rootDir>/src/types/$1',
     '^@/utils/(.*)$': '<rootDir>/src/utils/$1',
-    '^@/test/(.*)$': '<rootDir>/src/test/$1'
+    '^@/test/(.*)$': '<rootDir>/src/test/$1',
+    // Mock static file imports
+    '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
+    '\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$': '<rootDir>/src/test/__mocks__/fileMock.js'
   },
 
   // File patterns
@@ -97,23 +100,17 @@ const customJestConfig = {
   // Verbose output for debugging
   verbose: false,
 
-  // Watch plugins for better development experience
-  watchPlugins: [
-    'jest-watch-typeahead/filename',
-    'jest-watch-typeahead/testname'
-  ],
+  // Watch plugins for better development experience (commented out due to missing deps)
+  // watchPlugins: [
+  //   'jest-watch-typeahead/filename',
+  //   'jest-watch-typeahead/testname'
+  // ],
 
   // Global setup for canvas mocking (needed for chart testing)
   setupFiles: [
     'jest-canvas-mock',
     'whatwg-fetch'
   ],
-
-  // Mock static file imports
-  moduleNameMapping: {
-    '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
-    '\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$': '<rootDir>/src/test/__mocks__/fileMock.js'
-  },
 
   // Ignore patterns
   testPathIgnorePatterns: [
@@ -133,27 +130,24 @@ const customJestConfig = {
 const tddEnhancedConfig = {
   ...customJestConfig,
 
-  // Custom reporters for TDD workflow
-  reporters: [
-    'default',
-    [
-      'jest-junit',
-      {
-        outputDirectory: 'test-results',
-        outputName: 'junit.xml',
-        suiteName: 'PPV System Health Monitor Frontend Tests'
-      }
-    ]
-  ],
+  // Custom reporters for TDD workflow (commented out due to missing deps)
+  // reporters: [
+  //   'default',
+  //   [
+  //     'jest-junit',
+  //     {
+  //       outputDirectory: 'test-results',
+  //       outputName: 'junit.xml',
+  //       suiteName: 'PPV System Health Monitor Frontend Tests'
+  //     }
+  //   ]
+  // ],
 
-  // Test result processor for TDD metrics
-  testResultsProcessor: '<rootDir>/src/test/processors/tddResultProcessor.js',
+  // Test result processor for TDD metrics (commented out for now)
+  // testResultsProcessor: '<rootDir>/src/test/processors/tddResultProcessor.js',
 
   // Global variables for tests
   globals: {
-    'ts-jest': {
-      tsconfig: 'tsconfig.json'
-    },
     __DEV__: true,
     __TEST__: true
   }

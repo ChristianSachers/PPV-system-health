@@ -1,0 +1,124 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  body {
+    @apply bg-gray-50 text-gray-900;
+  }
+}
+
+@layer components {
+  /* Fulfillment Status Components for System Health Analysis */
+  .fulfillment-status {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .fulfillment-excellent {
+    @apply bg-fulfillment-excellent/10 text-fulfillment-excellent border border-fulfillment-excellent/20;
+  }
+
+  .fulfillment-good {
+    @apply bg-fulfillment-good/10 text-fulfillment-good border border-fulfillment-good/20;
+  }
+
+  .fulfillment-warning {
+    @apply bg-fulfillment-warning/10 text-fulfillment-warning border border-fulfillment-warning/20;
+  }
+
+  .fulfillment-critical {
+    @apply bg-fulfillment-critical/10 text-fulfillment-critical border border-fulfillment-critical/20;
+  }
+
+  /* Dashboard Grid System for System Health Visualization */
+  .dashboard-grid {
+    @apply grid grid-cols-1 lg:grid-cols-3 gap-6;
+  }
+
+  .dashboard-summary-cards {
+    @apply lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6;
+  }
+
+  .dashboard-main-content {
+    @apply lg:col-span-2 space-y-6;
+  }
+
+  .dashboard-sidebar {
+    @apply lg:col-span-1 space-y-6;
+  }
+
+  /* Card Components for Information Density */
+  .card {
+    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-6;
+  }
+
+  .card-header {
+    @apply flex items-center justify-between mb-4;
+  }
+
+  .card-title {
+    @apply text-lg font-semibold text-gray-900;
+  }
+
+  .card-subtitle {
+    @apply text-sm text-gray-600;
+  }
+
+  /* Table Components for Campaign Analysis */
+  .data-table {
+    @apply min-w-full divide-y divide-gray-200;
+  }
+
+  .data-table thead {
+    @apply bg-gray-50;
+  }
+
+  .data-table th {
+    @apply px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider;
+  }
+
+  .data-table td {
+    @apply px-6 py-4 whitespace-nowrap text-sm text-gray-900;
+  }
+
+  .data-table tbody tr:hover {
+    @apply bg-gray-50 cursor-pointer;
+  }
+
+  /* Button Components */
+  .btn {
+    @apply inline-flex items-center px-4 py-2 border font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors;
+  }
+
+  .btn-primary {
+    @apply border-transparent text-white bg-primary-600 hover:bg-primary-700 focus:ring-primary-500;
+  }
+
+  .btn-secondary {
+    @apply border-gray-300 text-gray-700 bg-white hover:bg-gray-50 focus:ring-primary-500;
+  }
+
+  /* Loading and State Components */
+  .loading-spinner {
+    @apply animate-spin rounded-full h-5 w-5 border-b-2 border-primary-600;
+  }
+
+  .loading-skeleton {
+    @apply animate-pulse bg-gray-200 rounded;
+  }
+}
+
+@layer utilities {
+  .text-fulfillment-rate {
+    color: theme('colors.fulfillment.excellent');
+  }
+
+  .bg-pattern-grid {
+    background-image: radial-gradient(circle, #e5e7eb 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+}
